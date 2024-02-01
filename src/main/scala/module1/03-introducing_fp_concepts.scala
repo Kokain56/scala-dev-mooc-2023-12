@@ -228,6 +228,16 @@ object hof{
       case None => None
     }
 
+    def printIfAny(): Unit = this match {
+      case Some(v) => println(v)
+      case None =>
+    }
+
+    def filter(pred: Option[T] => Boolean): Option[T] = this match {
+      case s @ Some(_) if pred(s) => s
+      case _ => None
+    }
+
   }
 
   case class Some[V](v: V) extends Option[V]
@@ -237,6 +247,17 @@ object hof{
     def apply[T](v: T): Option[T] =
       if(v == null) None
       else Some(v)
+
+    def zip[A, B](firstOption: Option[A], secondOption: Option[B]): Option[Tuple2[A, B]] = {
+      try{
+        val firstValue = firstOption.get
+        val secondValue = secondOption.get
+        Option(firstValue, secondValue)
+      }catch {
+        case _: Exception => None
+      }
+    }
+
   }
 
   val o1: Option[Int] = Option(1)
@@ -280,8 +301,57 @@ object hof{
     */
 
     trait List[+T]{
-      def ::[TT >: T](elem: TT): List[TT] = ???
-    }
+      def ::[TT >: T](elem: TT): List[TT] = List.::(elem, this)
+
+      def mkString(str: String): String = {
+        @tailrec
+        def mkString(list: List[T], accStr: String): String = list match {
+          case List.::(head, List.Nil) => accStr.concat(head.toString)
+          case List.::(head, tail) => mkString(tail, accStr.concat(head.toString).concat(str))
+        }
+        mkString(this, "")
+      }
+
+      def reverse(): List[T] = {
+        @tailrec
+        def transfusion(leftList: List[T], rightList: List[T]): (List[T], List[T]) = {
+          leftList match {
+            case List.::(head, List.Nil) => (List[T](), List.::(head, rightList))
+            case List.::(head, tail) => transfusion(tail, List.::(head, rightList))
+          }
+        }
+
+        transfusion(this, List[T]())._2
+      }
+
+     def map[TT](f: T => TT): List[TT] = {
+       this match {
+         case List.::(head, List.Nil) => List(f(head))
+         case List.::(head, tail) => List.::(f(head), tail.map(f))
+       }
+     }
+
+     def filter(f: T => Boolean): List[T] = {
+       this match {
+         case List.::(head, List.Nil) if f(head) => List(head)
+         case List.::(head, tail) if f(head) => List.::(head, tail.filter(f))
+         case List.::(_, tail) => tail.filter(f)
+         case _ => List()
+       }
+     }
+
+     def println(): Unit = {
+       def println(list: List[T]): Unit = list match {
+         case List.::(head, List.Nil) => printf("%s\n", head.toString)
+         case List.::(head, tail) =>
+           printf("%s, ", head.toString)
+           println(tail)
+         case List.Nil => printf(s"\n")
+       }
+       println(this)
+     }
+
+   }
 
     object List{
       case class ::[A](head: A, tail: List[A]) extends List[A]
@@ -289,6 +359,10 @@ object hof{
 
       def apply[A](v: A*): List[A] =
         if(v.isEmpty) List.Nil else new ::(v.head, apply(v.tail:_*))
+
+      def incList(list: List[Int]): List[Int] = list.map(x => x + 1)
+
+      def shoutString(list: List[String]): List[String] = list.map(x => x.concat("!"))
     }
 
     val l1: List[Int] = List(1, 2, 3)
